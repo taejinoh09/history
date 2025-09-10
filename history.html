@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>편전 vs 조총 성능 비교 시뮬레이터</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #4a6741 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #f39c12, #e74c3c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .weapon-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .weapon-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .weapon-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .weapon-card h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .specs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .spec-item {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .spec-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .spec-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #f39c12;
+        }
+        
+        .simulation-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        input, select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 1em;
+        }
+        
+        button {
+            padding: 12px 25px;
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: auto;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .result-card {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .result-title {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+        
+        .result-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .pyeongeon { color: #3498db; }
+        .josong { color: #e74c3c; }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        
+        .tactical-analysis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .analysis-card {
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid;
+        }
+        
+        .analysis-card.pyeongeon { border-left-color: #3498db; }
+        .analysis-card.josong { border-left-color: #e74c3c; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-fill.pyeongeon { background: linear-gradient(90deg, #3498db, #2980b9); }
+        .progress-fill.josong { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ 편전 vs 조총 성능 비교 시뮬레이터 ⚔️</h1>
+        
+        <div class="weapon-cards">
+            <div class="weapon-card">
+                <h3 class="pyeongeon">🏹 편전 (片箭)</h3>
+                <div class="specs">
+                    <div class="spec-item">
+                        <div class="spec-label">최대 사거리</div>
+                        <div class="spec-value">360m</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">발사속도</div>
+                        <div class="spec-value">6-8발/분</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">관통력</div>
+                        <div class="spec-value">중간</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">은밀성</div>
+                        <div class="spec-value">높음</div>
+                    </div>
+                </div>
+                <p>작고 가벼운 화살로 높은 연사력과 은밀성이 특징. 비나 습기에도 안정적으로 사용 가능하며 화살 회수 및 재사용이 가능합니다.</p>
+            </div>
+            
+            <div class="weapon-card">
+                <h3 class="josong">🔫 조총 (鳥銃)</h3>
+                <div class="specs">
+                    <div class="spec-item">
+                        <div class="spec-label">유효 사거리</div>
+                        <div class="spec-value">100-150m</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">발사속도</div>
+                        <div class="spec-value">3-4발/분</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">관통력</div>
+                        <div class="spec-value">매우 높음</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-label">심리전 효과</div>
+                        <div class="spec-value">매우 높음</div>
+                    </div>
+                </div>
+                <p>납탄의 강력한 관통력과 폭음·화염·연기로 인한 심리적 위축 효과. 사용법이 단순해 단기간 전력화가 가능합니다.</p>
+            </div>
+        </div>
+        
+        <div class="simulation-section">
+            <h2>📊 성능 비교 레이더 차트</h2>
+            <div class="chart-container">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="simulation-section">
+            <h2>🎯 사격 시뮬레이션</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label>거리 (m)</label>
+                    <input type="range" id="distance" min="50" max="400" value="150" oninput="updateSimulation()">
+                    <span id="distanceValue">150m</span>
+                </div>
+                <div class="control-group">
+                    <label>목표물</label>
+                    <select id="target" onchange="updateSimulation()">
+                        <option value="soldier">보병</option>
+                        <option value="armor">갑옷 착용 보병</option>
+                        <option value="shield">방패 보병</option>
+                        <option value="horse">기병</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>환경 조건</label>
+                    <select id="weather" onchange="updateSimulation()">
+                        <option value="clear">맑음</option>
+                        <option value="windy">바람</option>
+                        <option value="rain">비</option>
+                    </select>
+                </div>
+                <button onclick="runSimulation()">시뮬레이션 실행</button>
+            </div>
+            
+            <div class="results" id="results"></div>
+        </div>
+        
+        <div class="simulation-section">
+            <h2>⚔️ 관통력 테스트</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label>방어구 종류</label>
+                    <select id="armor" onchange="penetrationTest()">
+                        <option value="cloth">천 갑옷</option>
+                        <option value="leather">가죽 갑옷</option>
+                        <option value="chain">사슬 갑옷</option>
+                        <option value="plate">판금 갑옷</option>
+                        <option value="wood">목제 방패</option>
+                    </select>
+                </div>
+                <button onclick="penetrationTest()">관통력 테스트</button>
+            </div>
+            <div class="results" id="penetrationResults"></div>
+        </div>
+        
+        <div class="tactical-analysis">
+            <div class="analysis-card pyeongeon">
+                <h3>편전의 전술적 장점</h3>
+                <div>
+                    <p><strong>병참 지속성:</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill pyeongeon" style="width: 90%"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>환경 적응성:</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill pyeongeon" style="width: 85%"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>은밀성:</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill pyeongeon" style="width: 95%"></div>
+                    </div>
+                </div>
+                <p style="margin-top: 15px; font-size: 0.9em;">화살 회수 가능, 비에도 사용 가능, 소음이 적어 기습에 유리</p>
+            </div>
+            
+            <div class="analysis-card josong">
+                <h3>조총의 전술적 장점</h3>
+                <div>
+                    <p><strong>관통력:</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill josong" style="width: 95%"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>심리전 효과:</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill josong" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>훈련 용이성:</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill josong" style="width: 80%"></div>
+                    </div>
+                </div>
+                <p style="margin-top: 15px; font-size: 0.9em;">강력한 관통력, 폭음과 화염으로 적 사기 저하, 사용법이 비교적 간단</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 레이더 차트 생성
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        const radarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['사거리', '정확도', '관통력', '연사력', '은밀성', '심리전효과'],
+                datasets: [{
+                    label: '편전',
+                    data: [90, 75, 60, 85, 95, 30],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                    pointBackgroundColor: '#3498db',
+                }, {
+                    label: '조총',
+                    data: [50, 60, 95, 40, 20, 100],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                    pointBackgroundColor: '#e74c3c',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'white'
+                        }
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            color: 'white',
+                            backdropColor: 'transparent'
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,0.3)'
+                        },
+                        pointLabels: {
+                            color: 'white',
+                            font: {
+                                size: 14
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 거리별 명중률 그래프
+        const accuracyCtx = document.getElementById('accuracyChart').getContext('2d');
+        const distances = [50, 100, 150, 200, 250, 300, 350, 400];
+        const pyeongeonAccuracy = [90, 85, 80, 70, 60, 45, 35, 20];
+        const josongAccuracy = [85, 80, 70, 50, 30, 15, 8, 5];
+
+        const accuracyChart = new Chart(accuracyCtx, {
+            type: 'line',
+            data: {
+                labels: distances.map(d => d + 'm'),
+                datasets: [{
+                    label: '편전 명중률',
+                    data: pyeongeonAccuracy,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: '조총 명중률',
+                    data: josongAccuracy,
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'white' }
+                    },
+                    title: {
+                        display: true,
+                        text: '거리별 명중률 변화',
+                        color: 'white',
+                        font: { size: 16 }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        title: {
+                            display: true,
+                            text: '거리 (m)',
+                            color: 'white'
+                        }
+                    },
+                    y: {
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        title: {
+                            display: true,
+                            text: '명중률 (%)',
+                            color: 'white'
+                        },
+                        max: 100,
+                        min: 0
+                    }
+                }
+            }
+        });
+
+        // 방어구별 관통력 비교 그래프
+        const penetrationCtx = document.getElementById('penetrationChart').getContext('2d');
+        const armorTypes = ['천 갑옷', '가죽 갑옷', '사슬 갑옷', '판금 갑옷', '목제 방패'];
+        const pyeongeonPenetration = [85, 70, 45, 20, 60];
+        const josongPenetration = [100, 95, 80, 60, 90];
+
+        const penetrationChart = new Chart(penetrationCtx, {
+            type: 'bar',
+            data: {
+                labels: armorTypes,
+                datasets: [{
+                    label: '편전 관통력',
+                    data: pyeongeonPenetration,
+                    backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                    borderColor: '#3498db',
+                    borderWidth: 2
+                }, {
+                    label: '조총 관통력',
+                    data: josongPenetration,
+                    backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                    borderColor: '#e74c3c',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'white' }
+                    },
+                    title: {
+                        display: true,
+                        text: '방어구별 관통력 비교',
+                        color: 'white',
+                        font: { size: 16 }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        title: {
+                            display: true,
+                            text: '관통률 (%)',
+                            color: 'white'
+                        },
+                        max: 100,
+                        min: 0
+                    }
+                }
+            }
+        });
+
+        // 시간당 화력 비교 그래프
+        const fireRateCtx = document.getElementById('fireRateChart').getContext('2d');
+        const timeMinutes = [1, 2, 3, 4, 5, 10, 15, 20];
+        const pyeongeonShots = timeMinutes.map(t => t * 7); // 분당 7발
+        const josongShots = timeMinutes.map(t => t * 3.5); // 분당 3.5발
+
+        const fireRateChart = new Chart(fireRateCtx, {
+            type: 'line',
+            data: {
+                labels: timeMinutes.map(t => t + '분'),
+                datasets: [{
+                    label: '편전 누적 발사수',
+                    data: pyeongeonShots,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.1
+                }, {
+                    label: '조총 누적 발사수',
+                    data: josongShots,
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'white' }
+                    },
+                    title: {
+                        display: true,
+                        text: '시간당 누적 발사수 비교',
+                        color: 'white',
+                        font: { size: 16 }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        title: {
+                            display: true,
+                            text: '시간',
+                            color: 'white'
+                        }
+                    },
+                    y: {
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        title: {
+                            display: true,
+                            text: '발사수 (발)',
+                            color: 'white'
+                        },
+                        min: 0
+                    }
+                }
+            }
+        });
+
+        function updateSimulation() {
+            const distance = document.getElementById('distance').value;
+            document.getElementById('distanceValue').textContent = distance + 'm';
+        }
+
+        function runSimulation() {
+            const distance = parseInt(document.getElementById('distance').value);
+            const target = document.getElementById('target').value;
+            const weather = document.getElementById('weather').value;
+            
+            // 거리별 명중률 계산
+            let pyeongeonAccuracy = Math.max(10, 90 - (distance - 50) * 0.2);
+            let josongAccuracy = Math.max(5, 80 - (distance - 50) * 0.4);
+            
+            // 목표물 보정
+            const targetModifier = {
+                'soldier': 1.0,
+                'armor': 0.8,
+                'shield': 0.7,
+                'horse': 1.2
+            };
+            
+            // 날씨 보정
+            const weatherModifier = {
+                'clear': 1.0,
+                'windy': 0.8,
+                'rain': weather === 'rain' ? { pyeongeon: 0.9, josong: 0.3 } : 0.8
+            };
+            
+            if (weather === 'rain') {
+                pyeongeonAccuracy *= weatherModifier.rain.pyeongeon;
+                josongAccuracy *= weatherModifier.rain.josong;
+            } else {
+                pyeongeonAccuracy *= weatherModifier[weather] * targetModifier[target];
+                josongAccuracy *= weatherModifier[weather] * targetModifier[target];
+            }
+            
+            // 관통력 계산
+            const pyeongeonPenetration = distance < 200 ? 70 : 50;
+            const josongPenetration = distance < 150 ? 95 : 60;
+            
+            // 연사력 (분당 발사수)
+            const pyeongeonRate = 7;
+            const josongRate = 3.5;
+            
+            displayResults({
+                pyeongeonAccuracy: Math.round(pyeongeonAccuracy),
+                josongAccuracy: Math.round(josongAccuracy),
+                pyeongeonPenetration: pyeongeonPenetration,
+                josongPenetration: josongPenetration,
+                pyeongeonRate: pyeongeonRate,
+                josongRate: josongRate,
+                distance: distance
+            });
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="result-card">
+                    <div class="result-title">편전 명중률</div>
+                    <div class="result-value pyeongeon">${results.pyeongeonAccuracy}%</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">조총 명중률</div>
+                    <div class="result-value josong">${results.josongAccuracy}%</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">편전 관통력</div>
+                    <div class="result-value pyeongeon">${results.pyeongeonPenetration}%</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">조총 관통력</div>
+                    <div class="result-value josong">${results.josongPenetration}%</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">편전 연사력</div>
+                    <div class="result-value pyeongeon">${results.pyeongeonRate}발/분</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">조총 연사력</div>
+                    <div class="result-value josong">${results.josongRate}발/분</div>
+                </div>
+            `;
+        }
+
+        function penetrationTest() {
+            const armor = document.getElementById('armor').value;
+            
+            const armorData = {
+                'cloth': { name: '천 갑옷', pyeongeon: 85, josong: 100 },
+                'leather': { name: '가죽 갑옷', pyeongeon: 70, josong: 95 },
+                'chain': { name: '사슬 갑옷', pyeongeon: 45, josong: 80 },
+                'plate': { name: '판금 갑옷', pyeongeon: 20, josong: 60 },
+                'wood': { name: '목제 방패', pyeongeon: 60, josong: 90 }
+            };
+            
+            const data = armorData[armor];
+            
+            document.getElementById('penetrationResults').innerHTML = `
+                <div class="result-card">
+                    <div class="result-title">방어구</div>
+                    <div class="result-value">${data.name}</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">편전 관통률</div>
+                    <div class="result-value pyeongeon">${data.pyeongeon}%</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">조총 관통률</div>
+                    <div class="result-value josong">${data.josong}%</div>
+                </div>
+                <div class="result-card">
+                    <sdiv class="result-title">권장 무기</div>
+                    <div class="result-value ${data.pyeongeon > data.josong ? 'pyeongeon' : 'josong'}">
+                        ${data.pyeongeon > data.josong ? '편전' : '조총'}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 초기 실행
+        updateSimulation();
+        runSimulation();
+        penetrationTest();
+    </script>
+</body>
+</html>
